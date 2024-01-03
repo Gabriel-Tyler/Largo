@@ -1,3 +1,3 @@
 # Largo
 
-An implementation of Scheme in Rust
+A Lisp implementation in Rust
