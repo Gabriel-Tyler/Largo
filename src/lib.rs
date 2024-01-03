@@ -74,7 +74,7 @@ fn default_env() -> Env {
     let mut data = HashMap::<String, Exp>::new();
     data.insert(
         "+".to_owned(),
-        Exp::Func(|args| {
+        Exp::Func(|args: &[Exp]| -> Result<Exp> {
             let floats = parse_list_of_floats(args)?;
             let sum: f64 = floats.iter().sum();
             Ok(Exp::Number(sum))
@@ -82,12 +82,12 @@ fn default_env() -> Env {
     );
     data.insert(
         "-".to_owned(),
-        Exp::Func(|args| {
+        Exp::Func(|args: &[Exp]| -> Result<Exp> {
             let floats = parse_list_of_floats(args)?;
-            let first = *floats
+            let &first = floats
                 .first()
                 .ok_or(Err::Reason("`-` requires at least one operand".to_owned()))?;
-            let sum_rest: f64 = floats.iter().sum();
+            let sum_rest: f64 = floats.iter().skip(1).sum();
             Ok(Exp::Number(first - sum_rest))
         }),
     );
@@ -95,10 +95,7 @@ fn default_env() -> Env {
 }
 
 fn parse_list_of_floats(floats: &[Exp]) -> Result<Vec<f64>> {
-    floats
-        .iter()
-        .map(|exp| parse_single_float(exp))
-        .collect()
+    floats.iter().map(|exp| parse_single_float(exp)).collect()
 }
 
 fn parse_single_float(exp: &Exp) -> Result<f64> {
@@ -155,5 +152,24 @@ mod tests {
         assert_eq!(parse_atom("1.0"), Exp::Number(1.0));
         assert_eq!(parse_atom("Hello"), Exp::Symbol("Hello".to_owned()));
         assert_eq!(parse_atom("hi1.0hi"), Exp::Symbol("hi1.0hi".to_owned()));
+    }
+
+    #[test]
+    fn check_default_env() {
+        let Env { data } = default_env();
+
+        let add = *match data.get("+").unwrap() {
+            Exp::Func(f) => f,
+            _ => panic!("data did not return addition"),
+        };
+        let sub = *match data.get("-").unwrap() {
+            Exp::Func(f) => f,
+            _ => panic!("data did not return subtraction"),
+        };
+
+        let exps = vec![Exp::Number(1.0), Exp::Number(2.0), Exp::Number(3.0)];
+
+        assert_eq!(add(&exps).unwrap(), Exp::Number(6.0));
+        assert_eq!(sub(&exps).unwrap(), Exp::Number(-4.0));
     }
 }
