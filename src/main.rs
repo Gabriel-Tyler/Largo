@@ -26,8 +26,7 @@ struct LargoEnv {
     data: HashMap<String, LargoExp>,
 }
 
-fn main() {
-}
+fn main() {}
 
 fn tokenize(expr: String) -> Vec<String> {
     expr.replace("(", " ( ")
@@ -112,5 +111,15 @@ mod tests {
             ])
         );
         assert!(rest.is_empty());
+    }
+
+    #[test]
+    fn check_parse_atom() {
+        assert_eq!(parse_atom("1.0"), LargoExp::Number(1.0));
+        assert_eq!(parse_atom("Hello"), LargoExp::Symbol("Hello".to_owned()));
+        assert_eq!(
+            parse_atom("hi1.0hi"),
+            LargoExp::Symbol("hi1.0hi".to_owned())
+        );
     }
 }
