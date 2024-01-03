@@ -26,7 +26,8 @@ struct LargoEnv {
     data: HashMap<String, LargoExp>,
 }
 
-fn main() {}
+fn main() {
+}
 
 fn tokenize(expr: String) -> Vec<String> {
     expr.replace("(", " ( ")
@@ -63,8 +64,12 @@ fn read_seq<'a>(tokens: &'a [String]) -> Result<(LargoExp, &'a [String])> {
     }
 }
 
-fn parse_atom(atom: &str) -> LargoExp {
-    unimplemented!()
+fn parse_atom(token: &str) -> LargoExp {
+    let parse_result = token.parse();
+    match parse_result {
+        Ok(v) => LargoExp::Number(v),
+        Err(_) => LargoExp::Symbol(token.to_owned()),
+    }
 }
 
 #[cfg(test)]
