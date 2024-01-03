@@ -47,6 +47,26 @@ fn parse<'a>(tokens: &'a [String]) -> Result<(LargoExp, &'a [String])> {
     }
 }
 
+fn read_seq<'a>(tokens: &'a [String]) -> Result<(LargoExp, &'a [String])> {
+    let mut result: Vec<LargoExp> = vec![];
+    let mut xs = tokens;
+    loop {
+        let (next_token, rest) = xs
+            .split_first()
+            .ok_or(LargoErr::Reason("Could not find closing `)`".to_owned()))?;
+        if next_token == ")" {
+            return Ok((LargoExp::List(result), rest));
+        }
+        let (exp, new_xs) = parse(&rest)?;
+        result.push(exp);
+        xs = new_xs;
+    }
+}
+
+fn parse_atom(atom: &str) -> LargoExp {
+    unimplemented!()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
