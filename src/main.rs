@@ -14,14 +14,14 @@ enum LargoErr {
     UnbalancedParens(usize),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 enum LargoExp {
     Symbol(String),
     Number(f64),
     List(Vec<LargoExp>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct LargoEnv {
     data: HashMap<String, LargoExp>,
 }
@@ -58,7 +58,7 @@ fn read_seq<'a>(tokens: &'a [String]) -> Result<(LargoExp, &'a [String])> {
         if next_token == ")" {
             return Ok((LargoExp::List(result), rest));
         }
-        let (exp, new_xs) = parse(&rest)?;
+        let (exp, new_xs) = parse(&xs)?;
         result.push(exp);
         xs = new_xs;
     }
@@ -77,7 +77,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn check_error_value() {
+    fn check_error() {
         assert_eq!(
             "Error: Hello there".to_owned(),
             format!("{}", LargoErr::Reason("Hello there".to_owned()))
@@ -96,5 +96,21 @@ mod tests {
                 ")".to_owned()
             ]
         );
+    }
+
+    #[test]
+    fn check_parse() {
+        let lexemes = "(+ 1 2)".to_owned();
+        let tokens = tokenize(lexemes);
+        let (exp, rest) = parse(tokens.as_slice()).unwrap();
+        assert_eq!(
+            exp,
+            LargoExp::List(vec![
+                LargoExp::Symbol("+".to_owned()),
+                LargoExp::Number(1.0),
+                LargoExp::Number(2.0),
+            ])
+        );
+        assert!(rest.is_empty());
     }
 }
