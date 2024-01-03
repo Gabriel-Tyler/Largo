@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use anyhow::Result;
 use thiserror::Error;
 
@@ -14,7 +16,7 @@ enum Err {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Exp {
+enum Exp {
     Symbol(String),
     Number(f64),
     List(Vec<Exp>),
@@ -26,7 +28,7 @@ struct Env {
     data: HashMap<String, Exp>,
 }
 
-pub fn tokenize(expr: String) -> Vec<String> {
+fn tokenize(expr: String) -> Vec<String> {
     expr.replace("(", " ( ")
         .replace(")", " ) ")
         .split_whitespace()
@@ -34,7 +36,7 @@ pub fn tokenize(expr: String) -> Vec<String> {
         .collect()
 }
 
-pub fn parse<'a>(tokens: &'a [String]) -> Result<(Exp, &'a [String])> {
+fn parse<'a>(tokens: &'a [String]) -> Result<(Exp, &'a [String])> {
     let (token, rest) = tokens
         .split_first()
         .ok_or(Err::Reason("Could not get token".to_owned()))?;
@@ -102,6 +104,45 @@ fn parse_single_float(exp: &Exp) -> Result<f64> {
     match exp {
         Exp::Number(num) => Ok(*num),
         _ => Err(Err::Reason("Expected a number".to_owned()))?,
+    }
+}
+
+fn eval(exp: &Exp, env: &mut Env) -> Result<Exp> {
+    match exp {
+        // lookup symbol
+        Exp::Symbol(symbol) => Ok(env
+            .data
+            .get(symbol)
+            .ok_or(Err::Reason(format!("Unexpected symbol `{symbol}`")))
+            .cloned()?),
+        // return the number
+        Exp::Number(_) => Ok(exp.clone()),
+        // evaluate each item in list and apply
+        Exp::List(list) => {
+            // get car and cdr
+            let (op, args) = list
+                .split_first()
+                .ok_or(Err::Reason("Expected non-empty list".to_owned()))?;
+
+            // eval operator
+            let op = eval(op, env)?;
+
+            // check op is a function
+            match op {
+                Exp::Func(op) => {
+                    // evaluate args
+                    let args = args
+                        .iter()
+                        .map(|x| eval(x, env))
+                        .collect::<Result<Vec<Exp>>>()?;
+
+                    // apply
+                    op(&args)
+                }
+                _ => Err(Err::Reason("Operator must be a function".to_owned()).into()),
+            }
+        }
+        Exp::Func(_) => Err(Err::Reason("Cannot evaluate a function".to_owned()).into()),
     }
 }
 
