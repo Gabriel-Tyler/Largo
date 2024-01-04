@@ -2,11 +2,12 @@ use anyhow::Result;
 use thiserror::Error;
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::{fmt, io};
 
 #[derive(Error, Debug)]
 enum Err {
-    #[error("Error: {0}")]
+    #[error("{0}")]
     Reason(String),
     // #[error("Syntax error; line:{0} col:{1}")]
     // SyntaxErr(u32, u32),
@@ -172,8 +173,10 @@ fn string_to_exp(lexemes: String, env: &mut Env) -> Result<Exp> {
 
 fn get_line() -> String {
     let mut lexemes = String::new();
-    io::stdin().read_line(&mut lexemes).expect("Could not read line");
-    lexemes
+    io::stdin()
+        .read_line(&mut lexemes)
+        .expect("Could not read line");
+    lexemes.trim().to_owned()
 }
 
 pub fn run_repl() -> Result<()> {
@@ -181,10 +184,14 @@ pub fn run_repl() -> Result<()> {
     let mut env = default_env();
     loop {
         print!(">>> ");
+        io::stdout().flush()?;
         let line = get_line();
-        if line == "quit" { break; }
+        println!("line is `{}`", line);
+        if line == "quit" {
+            break;
+        }
         let expr = string_to_exp(line, &mut env)?;
-        println!("{}", expr);
+        println!("=> {}", expr);
     }
     Ok(())
 }
