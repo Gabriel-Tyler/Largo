@@ -190,7 +190,7 @@ pub fn run_repl() -> Result<()> {
             break;
         }
         let expr = string_to_exp(line, &mut env)?;
-        println!("=> {}", expr);
+        println!("{}", expr);
     }
     Ok(())
 }
