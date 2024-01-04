@@ -4,6 +4,7 @@ use anyhow::Result;
 use thiserror::Error;
 
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Error, Debug)]
 enum Err {
@@ -147,6 +148,21 @@ fn eval(exp: &Exp, env: &mut Env) -> Result<Exp> {
 
         // shouldn't be allowed
         Exp::Func(_) => Err(Err::Reason("Cannot evaluate a function".to_owned()).into()),
+    }
+}
+
+impl fmt::Display for Exp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let repr = match self {
+            Exp::Symbol(s) => s.clone(),
+            Exp::Number(n) => n.to_string(),
+            Exp::List(l) => {
+                let l: Vec<String> = l.iter().map(|exp| exp.to_string()).collect();
+                format!("({})", l.join(","))
+            }
+            Exp::Func(_) => "Function".to_owned(),
+        };
+        write!(f, "{}", repr)
     }
 }
 
