@@ -1,3 +1,9 @@
-// use largo::*;
+use anyhow::Result;
 
-fn main() {}
+use largo;
+
+fn main() -> Result<()> {
+    largo::run_repl()?;
+    Ok(())
+}
+

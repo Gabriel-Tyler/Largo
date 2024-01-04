@@ -1,19 +1,17 @@
-#![allow(unused)]
-
 use anyhow::Result;
 use thiserror::Error;
 
 use std::collections::HashMap;
-use std::fmt;
+use std::{fmt, io};
 
 #[derive(Error, Debug)]
 enum Err {
     #[error("Error: {0}")]
     Reason(String),
-    #[error("Syntax error; line:{0} col:{1}")]
-    SyntaxErr(u32, u32),
-    #[error("Parens not balanced; {0} parens needed")]
-    UnbalancedParens(usize),
+    // #[error("Syntax error; line:{0} col:{1}")]
+    // SyntaxErr(u32, u32),
+    // #[error("Parens not balanced; {0} parens needed")]
+    // UnbalancedParens(usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -22,6 +20,21 @@ enum Exp {
     Number(f64),
     List(Vec<Exp>),
     Func(fn(&[Exp]) -> Result<Exp>),
+}
+
+impl fmt::Display for Exp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let repr = match self {
+            Exp::Symbol(s) => s.clone(),
+            Exp::Number(n) => n.to_string(),
+            Exp::List(l) => {
+                let l: Vec<String> = l.iter().map(|exp| exp.to_string()).collect();
+                format!("({})", l.join(","))
+            }
+            Exp::Func(_) => "Function".to_owned(),
+        };
+        write!(f, "{}", repr)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -151,19 +164,29 @@ fn eval(exp: &Exp, env: &mut Env) -> Result<Exp> {
     }
 }
 
-impl fmt::Display for Exp {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let repr = match self {
-            Exp::Symbol(s) => s.clone(),
-            Exp::Number(n) => n.to_string(),
-            Exp::List(l) => {
-                let l: Vec<String> = l.iter().map(|exp| exp.to_string()).collect();
-                format!("({})", l.join(","))
-            }
-            Exp::Func(_) => "Function".to_owned(),
-        };
-        write!(f, "{}", repr)
+fn string_to_exp(lexemes: String, env: &mut Env) -> Result<Exp> {
+    let (parsed, _) = parse(&tokenize(lexemes))?;
+    let expr = eval(&parsed, env)?;
+    Ok(expr)
+}
+
+fn get_line() -> String {
+    let mut lexemes = String::new();
+    io::stdin().read_line(&mut lexemes).expect("Could not read line");
+    lexemes
+}
+
+pub fn run_repl() -> Result<()> {
+    println!("~~~~ Largo ~~~~");
+    let mut env = default_env();
+    loop {
+        print!(">>> ");
+        let line = get_line();
+        if line == "quit" { break; }
+        let expr = string_to_exp(line, &mut env)?;
+        println!("{}", expr);
     }
+    Ok(())
 }
 
 #[cfg(test)]
