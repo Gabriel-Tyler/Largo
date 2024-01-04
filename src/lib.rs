@@ -115,8 +115,10 @@ fn eval(exp: &Exp, env: &mut Env) -> Result<Exp> {
             .get(symbol)
             .ok_or(Err::Reason(format!("Unexpected symbol `{symbol}`")))
             .cloned()?),
+
         // return the number
         Exp::Number(_) => Ok(exp.clone()),
+
         // evaluate each item in list and apply
         Exp::List(list) => {
             // get car and cdr
@@ -124,10 +126,10 @@ fn eval(exp: &Exp, env: &mut Env) -> Result<Exp> {
                 .split_first()
                 .ok_or(Err::Reason("Expected non-empty list".to_owned()))?;
 
-            // eval operator
+            // evaluate the operator
             let op = eval(op, env)?;
 
-            // check op is a function
+            // check that op is a function
             match op {
                 Exp::Func(op) => {
                     // evaluate args
@@ -142,6 +144,8 @@ fn eval(exp: &Exp, env: &mut Env) -> Result<Exp> {
                 _ => Err(Err::Reason("Operator must be a function".to_owned()).into()),
             }
         }
+
+        // shouldn't be allowed
         Exp::Func(_) => Err(Err::Reason("Cannot evaluate a function".to_owned()).into()),
     }
 }
@@ -212,5 +216,21 @@ mod tests {
 
         assert_eq!(add(&exps).unwrap(), Exp::Number(6.0));
         assert_eq!(sub(&exps).unwrap(), Exp::Number(-4.0));
+    }
+
+    #[test]
+    fn check_eval() {
+        let mut env = default_env();
+
+        // Exp::List
+        let (exp1, _) = parse(&tokenize("(+ 1 2)".to_owned())).unwrap();
+        let (exp2, _) = parse(&tokenize("(+ 1 (+ 2 3 4))".to_owned())).unwrap();
+        let (exp3, _) = parse(&tokenize("(- 2 3)".to_owned())).unwrap();
+        let (exp4, _) = parse(&tokenize("(- 2 (+ 1 2 3))".to_owned())).unwrap();
+
+        assert_eq!(eval(&exp1, &mut env).unwrap(), Exp::Number(3.0));
+        assert_eq!(eval(&exp2, &mut env).unwrap(), Exp::Number(10.0));
+        assert_eq!(eval(&exp3, &mut env).unwrap(), Exp::Number(-1.0));
+        assert_eq!(eval(&exp4, &mut env).unwrap(), Exp::Number(-4.0));
     }
 }
