@@ -186,7 +186,6 @@ pub fn run_repl() -> Result<()> {
         print!(">>> ");
         io::stdout().flush()?;
         let line = get_line();
-        println!("line is `{}`", line);
         if line == "quit" {
             break;
         }
