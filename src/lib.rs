@@ -17,6 +17,7 @@ enum Error {
 
 #[derive(Clone, Debug, PartialEq)]
 enum Expr {
+    Bool(bool),
     Symbol(String),
     Number(f64),
     List(Vec<Expr>),
@@ -26,10 +27,11 @@ enum Expr {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let repr = match self {
+            Expr::Bool(b) => b.to_string(),
             Expr::Symbol(s) => s.clone(),
             Expr::Number(n) => n.to_string(),
             Expr::List(l) => {
-                let l: Vec<String> = l.iter().map(|exp| exp.to_string()).collect();
+                let l: Vec<String> = l.iter().map(|expr| expr.to_string()).collect();
                 format!("({})", l.join(","))
             }
             Expr::Func(_) => "Function".to_owned(),
@@ -44,14 +46,14 @@ struct Env {
 }
 
 fn tokenize(expr: String) -> Vec<String> {
-    expr.replace("(", " ( ")
-        .replace(")", " ) ")
+    expr.replace('(', " ( ")
+        .replace(')', " ) ")
         .split_whitespace()
         .map(|x| x.to_owned())
         .collect()
 }
 
-fn parse<'a>(tokens: &'a [String]) -> Result<(Expr, &'a [String])> {
+fn parse(tokens: &[String]) -> Result<(Expr, &[String])> {
     let (token, rest) = tokens
         .split_first()
         .ok_or(Error::Reason("Could not get token".to_owned()))?;
@@ -62,7 +64,7 @@ fn parse<'a>(tokens: &'a [String]) -> Result<(Expr, &'a [String])> {
     }
 }
 
-fn read_seq<'a>(tokens: &'a [String]) -> Result<(Expr, &'a [String])> {
+fn read_seq(tokens: &[String]) -> Result<(Expr, &[String])> {
     let mut result: Vec<Expr> = vec![];
     let mut xs = tokens;
     loop {
@@ -72,17 +74,23 @@ fn read_seq<'a>(tokens: &'a [String]) -> Result<(Expr, &'a [String])> {
         if next_token == ")" {
             return Ok((Expr::List(result), rest));
         }
-        let (exp, new_xs) = parse(&xs)?;
-        result.push(exp);
+        let (expr, new_xs) = parse(xs)?;
+        result.push(expr);
         xs = new_xs;
     }
 }
 
 fn parse_atom(token: &str) -> Expr {
-    let parse_result = token.parse();
-    match parse_result {
-        Ok(v) => Expr::Number(v),
-        Err(_) => Expr::Symbol(token.to_owned()),
+    match token {
+        "true" => Expr::Bool(true),
+        "false" => Expr::Bool(false),
+        _ => {
+            let parse_result = token.parse();
+            match parse_result {
+                Ok(v) => Expr::Number(v),
+                Err(_) => Expr::Symbol(token.to_owned()),
+            }
+        }
     }
 }
 
@@ -101,9 +109,9 @@ fn default_env() -> Env {
         "-".to_owned(),
         Expr::Func(|args: &[Expr]| -> Result<Expr> {
             let floats = parse_list_of_floats(args)?;
-            let &first = floats
-                .first()
-                .ok_or(Error::Reason("`-` requires at least one operand".to_owned()))?;
+            let &first = floats.first().ok_or(Error::Reason(
+                "`-` requires at least one operand".to_owned(),
+            ))?;
             let sum_rest: f64 = floats.iter().skip(1).sum();
             Ok(Expr::Number(first - sum_rest))
         }),
@@ -112,18 +120,20 @@ fn default_env() -> Env {
 }
 
 fn parse_list_of_floats(floats: &[Expr]) -> Result<Vec<f64>> {
-    floats.iter().map(|exp| parse_single_float(exp)).collect()
+    floats.iter().map(parse_single_float).collect()
 }
 
-fn parse_single_float(exp: &Expr) -> Result<f64> {
-    match exp {
+fn parse_single_float(expr: &Expr) -> Result<f64> {
+    match expr {
         Expr::Number(num) => Ok(*num),
         _ => Err(Error::Reason("Expected a number".to_owned()))?,
     }
 }
 
-fn eval(exp: &Expr, env: &mut Env) -> Result<Expr> {
-    match exp {
+fn eval(expr: &Expr, env: &mut Env) -> Result<Expr> {
+    match expr {
+        Expr::Bool(_) => Ok(expr.clone()),
+
         // lookup symbol
         Expr::Symbol(symbol) => Ok(env
             .data
@@ -132,7 +142,7 @@ fn eval(exp: &Expr, env: &mut Env) -> Result<Expr> {
             .cloned()?),
 
         // return the number
-        Expr::Number(_) => Ok(exp.clone()),
+        Expr::Number(_) => Ok(expr.clone()),
 
         // evaluate each item in list and apply
         Expr::List(list) => {
@@ -225,9 +235,9 @@ mod tests {
     fn check_parse() {
         let lexemes = "(+ 1 2)".to_owned();
         let tokens = tokenize(lexemes);
-        let (exp, rest) = parse(tokens.as_slice()).unwrap();
+        let (expr, rest) = parse(tokens.as_slice()).unwrap();
         assert_eq!(
-            exp,
+            expr,
             Expr::List(vec![
                 Expr::Symbol("+".to_owned()),
                 Expr::Number(1.0),
